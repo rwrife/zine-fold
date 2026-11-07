@@ -1,0 +1,23 @@
+# Flutter/Dart generated outputs
+.dart_tool/
+.flutter-plugins*
+.packages
+.pub-cache/
+.pub/
+build/
+coverage/
+*.lock.tmp
+# IDE/OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+# platform build intermediates
+windows/flutter/ephemeral/
+android/.gradle/
+ios/Pods/
+*.xcuserstate
+# local project data
+*.sqlite-shm
+*.sqlite-wal
