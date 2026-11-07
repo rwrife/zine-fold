@@ -1,0 +1,57 @@
+name: Validate
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.47.7'
+          cache: true
+      - run: flutter --version
+      - run: flutter pub get --enforce-lockfile
+      - run: dart format --output=none --set-exit-if-changed lib test
+      - run: flutter analyze
+      - run: flutter test
+      - run: flutter build windows --release
+
+  android:
+    runs-on: ubuntu-latest
+    container:
+      image: gmeligio/flutter-android:3.47.7
+      options: --user 1001
+    env:
+      HOME: /home/flutter
+      PUB_CACHE: /home/flutter/.pub-cache
+      FLUTTER_ROOT: /home/flutter/sdks/flutter
+      PATH: /home/flutter/sdks/flutter/bin:/home/flutter/sdks/flutter/bin/cache/dart-sdk/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      ANDROID_HOME: /home/flutter/sdks/android-sdk
+      JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
+    defaults:
+      run:
+        shell: bash
+    # Docker entrypoints do not run for each Actions step.
+    steps:
+      - uses: actions/checkout@v4
+      - run: flutter --version
+      - run: flutter pub get --enforce-lockfile
+      - run: flutter test
+      - run: flutter build apk --debug
+
+  ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.47.7'
+          cache: true
+      - run: flutter pub get --enforce-lockfile
+      - run: flutter build ios --simulator --no-codesign
