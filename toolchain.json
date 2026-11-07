@@ -1,7 +1,8 @@
 {
   "platform": "windows+android+ios+flutter",
-  "framework": "Flutter stable",
-  "status": "PLANNED - SDK versions to be measured and pinned in skeleton issue",
+  "flutter_version": "3.47.7",
+  "flutter_revision": "abaf9c5237",
+  "dart_version": "3.13.5",
   "bundle_identifier": "com.infinityball.zinefold",
   "android_application_id": "com.infinityball.zinefold",
   "ios_bundle_identifier": "com.infinityball.zinefold",

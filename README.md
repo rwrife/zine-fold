@@ -27,13 +27,13 @@ UX strategy A: Cupertino on iOS/iPadOS, Material 3 on Android, Fluent on Windows
 
 ## Status / milestones
 
-Documentation scaffold only. Flutter `windows/`, `android/`, `ios/` folders, icon, tests and CI do not exist yet; issue #1 creates real project. Milestones: skeleton and Windows/Android CI, pure layout engine, local import/project store, editing and preview, adaptive UX, backup/export, icon and release.
+Flutter 3.47.7 skeleton, platform targets, widget smoke tests and validation CI exist. App currently displays a development notice; booklet tools, file import, export and backups are not implemented. Milestones: pure layout engine, local import/project store, editing and preview, adaptive UX, backup/export, icon and release. Generated Flutter launcher icons are placeholders, not release assets.
 
-`AppStore/description.txt` is planning copy, not a feature-complete listing. Generate actual `AppStore/icon.png` with OpenAI Images via `~/.local/bin/spark-media --project zine-fold image --prompt "..."` after app skeleton, inspect and wire into Windows, Android and iOS icon sets. No placeholder icons count as done.
+`AppStore/description.txt` remains planning copy, not a feature-complete listing. Generate actual `AppStore/icon.png` with OpenAI Images via spark-media after app development, inspect and wire into Windows, Android and iOS icon sets. No placeholder icons count as done.
 
-## Build quickstart (after issue #1)
+## Build quickstart
 
-Install pinned Flutter stable SDK documented in `toolchain.json`; run `flutter pub get`, `flutter test`, `flutter run -d windows` on Windows. Linux checks should use a pinned Flutter Docker image, not a host SDK. Windows release via future `.github/workflows/release.yml`: `v*` tag or manual dispatch, `windows-latest` release build, zipped build attached to GitHub release. Android/iOS builds including tablets remain first-class; TestFlight/Play submission later, using repo secret names ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8, ASC_TEAM_ID only when expressly enabled.
+Install Flutter 3.47.7 (revision in `toolchain.json`); run `flutter pub get --enforce-lockfile`, `flutter test`, `flutter run -d windows` on Windows. CI validates Windows release build, Android debug APK and unsigned iOS simulator compile. Linux tests can use a pinned Flutter Docker image. Windows release publishing remains future work.
 
 ## Manual setup required
 
