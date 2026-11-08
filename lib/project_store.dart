@@ -87,7 +87,7 @@ class ProjectStore {
     if (!RegExp(r'^[a-f0-9]{32}$').hasMatch(id)) {
       throw const FormatException('Invalid project ID');
     }
-    return Directory('${root.path}/$id');
+    return Directory('${root.path}${Platform.pathSeparator}$id');
   }
 
   Future<ZineProject> create({required int signature}) => _exclusive(() async {
