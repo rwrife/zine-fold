@@ -27,7 +27,7 @@ UX strategy A: Cupertino on iOS/iPadOS, Material 3 on Android, Fluent on Windows
 
 ## Status / milestones
 
-Flutter 3.47.7 skeleton, platform targets, widget smoke tests and validation CI exist. App currently displays a development notice; booklet tools, file import, export and backups are not implemented. Milestones: pure layout engine, local import/project store, editing and preview, adaptive UX, backup/export, icon and release. Generated Flutter launcher icons are placeholders, not release assets.
+Flutter 3.47.7 targets and validation CI exist. Pure 8/16-page imposition and a private project-store/import API exist. App still displays a development notice: project creation/import is not yet wired into UI. Editing, preview, export, backups, final icons and release packaging remain future work. Generated launcher icons are placeholders.
 
 `AppStore/description.txt` remains planning copy, not a feature-complete listing. Generate actual `AppStore/icon.png` with OpenAI Images via spark-media after app development, inspect and wire into Windows, Android and iOS icon sets. No placeholder icons count as done.
 
