@@ -110,6 +110,42 @@ void main() {
   );
 
   test(
+    'blank, reorder, settings persist and protect stale revisions',
+    () async {
+      final project = await store.create(signature: 8);
+      final blank = await store.setBlank(project, 0);
+      expect(blank.pages[0]?.isBlank, true);
+      expect((await store.open(project.id)).pages[0]?.isBlank, true);
+      final moved = await store.reorderPages(blank, 0, 7);
+      expect(moved.pages[0], isNull);
+      expect(moved.pages[7]?.isBlank, true);
+      final changed = await store.updatePrintSettings(
+        moved,
+        paperSize: 'US-Letter',
+        flipEdge: 'long',
+      );
+      final reopened = await store.open(project.id);
+      expect(reopened.paperSize, 'US-Letter');
+      expect(reopened.flipEdge, 'long');
+      await expectLater(store.setBlank(project, 1), throwsStateError);
+      await expectLater(store.reorderPages(changed, -1, 0), throwsRangeError);
+      await expectLater(
+        store.updatePrintSettings(changed, flipEdge: 'diagonal'),
+        throwsArgumentError,
+      );
+      final cleared = await store.clearSlot(changed, 7);
+      expect((await store.open(project.id)).pages[7], isNull);
+      expect(cleared.paperSize, 'US-Letter');
+      final source = File('${root.path}/imported.png');
+      await source.writeAsBytes(img.encodePng(img.Image(width: 1, height: 1)));
+      final imported = await store.importFile(cleared, 0, source);
+      expect(imported.flipEdge, 'long');
+      await expectLater(store.setBlank(imported, 0), throwsStateError);
+      await expectLater(store.clearSlot(imported, 0), throwsStateError);
+    },
+  );
+
+  test(
     'two store instances serialize writes and protect stale revision',
     () async {
       final project = await store.create(signature: 8);

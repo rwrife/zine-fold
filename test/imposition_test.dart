@@ -82,7 +82,13 @@ void main() {
     );
   });
 
-  test('names landscape duplex flip direction', () {
+  test('names landscape duplex flip direction and fold guidance', () {
     expect(BookletImposition.duplexInstruction, contains('short edge'));
+    expect(
+      BookletImposition.instructionForFlip('short'),
+      contains('short edge'),
+    );
+    expect(BookletImposition.instructionForFlip('long'), contains('long edge'));
+    expect(BookletImposition.foldGuidance, contains('saddle-stitch'));
   });
 }
