@@ -2,27 +2,30 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import 'booklet_workspace.dart';
+import 'project_store.dart';
+
 void main() => runApp(const ZineFoldApp());
 
 class ZineFoldApp extends StatelessWidget {
-  const ZineFoldApp({super.key});
+  const ZineFoldApp({super.key, this.store, this.initialProject});
+
+  final ProjectStore? store;
+  final ZineProject? initialProject;
 
   @override
   Widget build(BuildContext context) {
-    const content = Center(
-      child: Padding(
-        padding: EdgeInsets.all(24),
-        child: Text(
-          'Zine Fold\nBooklet tools are in development.',
-          textAlign: TextAlign.center,
-        ),
-      ),
+    final content = BookletWorkspace(
+      store: store,
+      initialProject: initialProject,
     );
     return switch (defaultTargetPlatform) {
-      TargetPlatform.iOS => const CupertinoApp(
+      TargetPlatform.iOS => CupertinoApp(
         title: 'Zine Fold',
         home: CupertinoPageScaffold(
-          navigationBar: CupertinoNavigationBar(middle: Text('Zine Fold')),
+          navigationBar: const CupertinoNavigationBar(
+            middle: Text('Zine Fold'),
+          ),
           child: SafeArea(child: content),
         ),
       ),
@@ -37,13 +40,8 @@ class ZineFoldApp extends StatelessWidget {
       _ => WidgetsApp(
         color: const Color(0xff203e63),
         title: 'Zine Fold',
-        builder: (context, child) => const ColoredBox(
-          color: Color(0xfff4f6fa),
-          child: DefaultTextStyle(
-            style: TextStyle(fontSize: 20, color: Color(0xff203e63)),
-            child: content,
-          ),
-        ),
+        builder: (context, child) =>
+            ColoredBox(color: const Color(0xfff4f6fa), child: content),
       ),
     };
   }

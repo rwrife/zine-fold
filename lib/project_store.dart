@@ -11,18 +11,29 @@ import 'package:path_provider/path_provider.dart';
 /// One page within an app-owned copy. PDF pages share one copied file.
 class ProjectPage {
   const ProjectPage(this.fileName, this.sourcePage);
+  const ProjectPage.blank() : fileName = '', sourcePage = 0;
 
   final String fileName;
   final int sourcePage; // 1-based; images always use page 1.
+  bool get isBlank => fileName.isEmpty;
 }
 
 class ZineProject {
-  const ZineProject(this.id, this.signature, this.revision, this.pages);
+  const ZineProject(
+    this.id,
+    this.signature,
+    this.revision,
+    this.pages, {
+    this.paperSize = 'A4',
+    this.flipEdge = 'short',
+  });
 
   final String id;
   final int signature;
   final int revision;
   final List<ProjectPage?> pages;
+  final String paperSize;
+  final String flipEdge;
 }
 
 typedef PageCounter = Future<int> Function(File file, String extension);
@@ -158,7 +169,7 @@ class ProjectStore {
           if (current.pages
               .skip(slot)
               .take(count)
-              .any((page) => page != null)) {
+              .any((page) => page != null && !page.isBlank)) {
             throw StateError('Cannot overwrite an imported page');
           }
           final pages = List<ProjectPage?>.of(current.pages);
@@ -171,6 +182,8 @@ class ProjectStore {
             current.signature,
             current.revision + 1,
             pages,
+            paperSize: current.paperSize,
+            flipEdge: current.flipEdge,
           );
           await _save(directory, updated);
           return updated;
@@ -181,6 +194,125 @@ class ProjectStore {
         }
       });
 
+  Future<ZineProject> setBlank(ZineProject snapshot, int slot) =>
+      _exclusive(() async {
+        final directory = _directory(snapshot.id);
+        final current = await _read(directory);
+        if (current.revision != snapshot.revision) {
+          throw StateError('Project changed; reopen before updating');
+        }
+        if (slot < 0 || slot >= current.signature) {
+          throw RangeError.range(slot, 0, current.signature - 1, 'slot');
+        }
+        final pages = List<ProjectPage?>.of(current.pages);
+        if (pages[slot] != null && !pages[slot]!.isBlank) {
+          throw StateError('Cannot overwrite an imported page');
+        }
+        pages[slot] = const ProjectPage.blank();
+        final updated = ZineProject(
+          current.id,
+          current.signature,
+          current.revision + 1,
+          pages,
+          paperSize: current.paperSize,
+          flipEdge: current.flipEdge,
+        );
+        await _save(directory, updated);
+        return updated;
+      });
+
+  Future<ZineProject> clearSlot(ZineProject snapshot, int slot) =>
+      _exclusive(() async {
+        final directory = _directory(snapshot.id);
+        final current = await _read(directory);
+        if (current.revision != snapshot.revision) {
+          throw StateError('Project changed; reopen before updating');
+        }
+        if (slot < 0 || slot >= current.signature) {
+          throw RangeError.range(slot, 0, current.signature - 1, 'slot');
+        }
+        final pages = List<ProjectPage?>.of(current.pages);
+        if (pages[slot] != null && !pages[slot]!.isBlank) {
+          throw StateError('Cannot clear an imported page');
+        }
+        pages[slot] = null;
+        final updated = ZineProject(
+          current.id,
+          current.signature,
+          current.revision + 1,
+          pages,
+          paperSize: current.paperSize,
+          flipEdge: current.flipEdge,
+        );
+        await _save(directory, updated);
+        return updated;
+      });
+
+  Future<ZineProject> reorderPages(
+    ZineProject snapshot,
+    int oldIndex,
+    int newIndex,
+  ) => _exclusive(() async {
+    final directory = _directory(snapshot.id);
+    final current = await _read(directory);
+    if (current.revision != snapshot.revision) {
+      throw StateError('Project changed; reopen before reordering');
+    }
+    if (oldIndex < 0 || oldIndex >= current.signature) {
+      throw RangeError.range(oldIndex, 0, current.signature - 1, 'oldIndex');
+    }
+    if (newIndex < 0 || newIndex >= current.signature) {
+      throw RangeError.range(newIndex, 0, current.signature - 1, 'newIndex');
+    }
+    final pages = List<ProjectPage?>.of(current.pages);
+    final item = pages.removeAt(oldIndex);
+    pages.insert(newIndex, item);
+    final updated = ZineProject(
+      current.id,
+      current.signature,
+      current.revision + 1,
+      pages,
+      paperSize: current.paperSize,
+      flipEdge: current.flipEdge,
+    );
+    await _save(directory, updated);
+    return updated;
+  });
+
+  Future<ZineProject> updatePrintSettings(
+    ZineProject snapshot, {
+    String? paperSize,
+    String? flipEdge,
+  }) => _exclusive(() async {
+    final directory = _directory(snapshot.id);
+    final current = await _read(directory);
+    if (current.revision != snapshot.revision) {
+      throw StateError('Project changed; reopen before updating');
+    }
+    final newPaper = paperSize ?? current.paperSize;
+    final newFlip = flipEdge ?? current.flipEdge;
+    if (!['A4', 'US-Letter'].contains(newPaper)) {
+      throw ArgumentError.value(
+        newPaper,
+        'paperSize',
+        'Must be A4 or US-Letter',
+      );
+    }
+    if (!['short', 'long'].contains(newFlip)) {
+      throw ArgumentError.value(newFlip, 'flipEdge', 'Must be short or long');
+    }
+    final updated = ZineProject(
+      current.id,
+      current.signature,
+      current.revision + 1,
+      current.pages,
+      paperSize: newPaper,
+      flipEdge: newFlip,
+    );
+    await _save(directory, updated);
+    return updated;
+  });
+
   Future<void> _save(Directory directory, ZineProject project) async {
     final manifest = File('${directory.path}/project.json');
     final staged = File('${directory.path}/project.json.${_id()}.part');
@@ -190,10 +322,14 @@ class ProjectStore {
         'id': project.id,
         'signature': project.signature,
         'revision': project.revision,
+        'paperSize': project.paperSize,
+        'flipEdge': project.flipEdge,
         'pages': [
           for (final page in project.pages)
             if (page == null)
               null
+            else if (page.isBlank)
+              {'blank': true}
             else
               {'file': page.fileName, 'page': page.sourcePage},
         ],
@@ -241,6 +377,10 @@ class ProjectStore {
         pages.add(null);
         continue;
       }
+      if (entry is Map && entry.length == 1 && entry['blank'] == true) {
+        pages.add(const ProjectPage.blank());
+        continue;
+      }
       if (entry is! Map ||
           entry['file'] is! String ||
           !RegExp(r'^[a-f0-9]{32}\.(png|jpg|jpeg|webp|pdf)$')
@@ -260,11 +400,21 @@ class ProjectStore {
       }
       pages.add(page);
     }
+    final paper = data['paperSize'] ?? 'A4';
+    final flip = data['flipEdge'] ?? 'short';
+    if (!['A4', 'US-Letter'].contains(paper) ||
+        !['short', 'long'].contains(flip)) {
+      throw const FormatException(
+        'Invalid print settings; original left intact',
+      );
+    }
     return ZineProject(
       data['id'] as String,
       data['signature'] as int,
       data['revision'] as int,
       pages,
+      paperSize: paper as String,
+      flipEdge: flip as String,
     );
   }
 

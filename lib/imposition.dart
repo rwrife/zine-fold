@@ -8,6 +8,16 @@ class BookletImposition {
   static const duplexInstruction =
       'Print double-sided, flipping on the short edge (landscape).';
 
+  static String instructionForFlip(String flipEdge) {
+    if (flipEdge == 'long') {
+      return 'Print double-sided, flipping on the long edge (portrait feed). Warning: may cause upside-down booklet pages unless printer driver handles landscape orientation inversion.';
+    }
+    return duplexInstruction;
+  }
+
+  static const foldGuidance =
+      'After printing both sides, fold each sheet in half along the vertical center crease. Assemble the folded sheets nested in numerical order (Sheet 1 outer cover, Sheet 2 inside), then staple along the center spine (saddle-stitch).';
+
   /// Map sequential reading pages into sheets with front/back slots.
   ///
   /// Supplied pages map to reading order (1-indexed). Null elements or counts
