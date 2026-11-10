@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:fluent_ui/fluent_ui.dart' as fluent;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:zinefold/booklet_workspace.dart';
 import 'package:zinefold/project_store.dart';
@@ -86,10 +87,8 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       await tester.pumpWidget(
-        WidgetsApp(
-          color: const Color(0xff203e63),
-          builder: (context, child) =>
-              BookletWorkspace(store: store, initialProject: sixteen),
+        fluent.FluentApp(
+          home: BookletWorkspace(store: store, initialProject: sixteen),
         ),
       );
       await tester.pump();
