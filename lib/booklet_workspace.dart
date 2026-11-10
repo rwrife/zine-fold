@@ -4,16 +4,25 @@ import 'package:flutter/cupertino.dart';
 import 'package:pdfx/pdfx.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:fluent_ui/fluent_ui.dart' as fluent;
 
 import 'imposition.dart';
 import 'project_store.dart';
 
 /// Shared booklet editor; only controls change appearance per host platform.
 class BookletWorkspace extends StatefulWidget {
-  const BookletWorkspace({super.key, this.store, this.initialProject});
+  const BookletWorkspace({
+    super.key,
+    this.store,
+    this.initialProject,
+    this.section,
+  });
 
   final ProjectStore? store;
   final ZineProject? initialProject;
+
+  /// Null keeps legacy all-in-one layout for isolated workspace tests.
+  final int? section;
 
   @override
   State<BookletWorkspace> createState() => _BookletWorkspaceState();
@@ -77,6 +86,8 @@ class _BookletWorkspaceState extends State<BookletWorkspace> {
     if (_ios) {
       return CupertinoButton(
         key: key,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        minimumSize: const Size(44, 44),
         onPressed: onPressed,
         child: Text(label),
       );
@@ -84,43 +95,7 @@ class _BookletWorkspaceState extends State<BookletWorkspace> {
     if (_android) {
       return OutlinedButton(key: key, onPressed: onPressed, child: Text(label));
     }
-    return Semantics(
-      button: true,
-      enabled: onPressed != null,
-      label: label,
-      child: FocusableActionDetector(
-        key: key,
-        enabled: onPressed != null,
-        mouseCursor: onPressed == null
-            ? SystemMouseCursors.basic
-            : SystemMouseCursors.click,
-        actions: {
-          ActivateIntent: CallbackAction<ActivateIntent>(
-            onInvoke: (_) {
-              onPressed?.call();
-              return null;
-            },
-          ),
-        },
-        child: GestureDetector(
-          onTap: onPressed,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-            decoration: BoxDecoration(
-              color: onPressed == null
-                  ? const Color(0xffe6e8ed)
-                  : const Color(0xffe1e9f4),
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: const Color(0xff79899c)),
-            ),
-            child: Text(
-              label,
-              style: const TextStyle(fontSize: 14, color: Color(0xff203e63)),
-            ),
-          ),
-        ),
-      ),
-    );
+    return fluent.Button(key: key, onPressed: onPressed, child: Text(label));
   }
 
   Widget _choice(
@@ -359,18 +334,25 @@ class _BookletWorkspaceState extends State<BookletWorkspace> {
         decoration: BoxDecoration(
           border: Border.all(color: const Color(0xff9aa7b6)),
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              'Page ${slot.pageNumber}',
-              style: const TextStyle(fontWeight: FontWeight.bold),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: SizedBox(
+            width: 140,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'Page ${slot.pageNumber}',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                if (blank)
+                  Text(page == null ? 'Empty' : 'Blank')
+                else if (image != null)
+                  Expanded(child: image),
+              ],
             ),
-            if (blank)
-              Text(page == null ? 'Empty' : 'Blank')
-            else if (image != null)
-              Expanded(child: image),
-          ],
+          ),
         ),
       ),
     );
@@ -438,6 +420,9 @@ class _BookletWorkspaceState extends State<BookletWorkspace> {
         const SizedBox(height: 12),
       ],
     );
+    final showPages = widget.section != 1;
+    final showSheets =
+        widget.section == 1 || widget.section == null || width >= 900;
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: 14, color: Color(0xff203e63)),
       child: SingleChildScrollView(
@@ -445,8 +430,8 @@ class _BookletWorkspaceState extends State<BookletWorkspace> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            settings,
-            if (width >= 900)
+            if (showPages) settings,
+            if (showPages && showSheets && width >= 900)
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -456,9 +441,9 @@ class _BookletWorkspaceState extends State<BookletWorkspace> {
                 ],
               )
             else ...[
-              _pageGrid(project),
-              const SizedBox(height: 24),
-              _preview(project),
+              if (showPages) _pageGrid(project),
+              if (showPages && showSheets) const SizedBox(height: 24),
+              if (showSheets) _preview(project),
             ],
           ],
         ),
