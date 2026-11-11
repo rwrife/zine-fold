@@ -27,7 +27,7 @@ UX strategy A: Cupertino on iOS/iPadOS, Material 3 on Android, Fluent on Windows
 
 ## Status / milestones
 
-Flutter 3.47.7 targets and validation CI exist. Pure 8/16-page imposition, private project store, image/PDF page import, editing and sheet preview exist. Cupertino iOS, Material 3 Android and Fluent Windows shells use platform controls; narrow layouts switch Pages/Sheets while wide layouts show the editor and preview together. Export, backups, final icons and release packaging remain future work. Generated launcher icons are placeholders.
+Flutter 3.47.7 targets and validation CI exist. Pure 8/16-page imposition, private project store, image/PDF page import, editing and sheet preview exist. Cupertino iOS, Material 3 Android and Fluent Windows shells use platform controls; narrow layouts switch Pages/Sheets while wide layouts show the editor and preview together. Print-sheet PDF and portable ZIP backups now export with local save dialogs; restore creates a new local project after validation. Final icons and release packaging remain future work. Generated launcher icons are placeholders.
 
 `AppStore/description.txt` remains planning copy, not a feature-complete listing. Generate actual `AppStore/icon.png` with OpenAI Images via spark-media after app development, inspect and wire into Windows, Android and iOS icon sets. No placeholder icons count as done.
 

@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:pdfx/pdfx.dart';
 import 'package:flutter/foundation.dart';
@@ -7,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 
 import 'imposition.dart';
+import 'project_export.dart';
 import 'project_store.dart';
 
 /// Shared booklet editor; only controls change appearance per host platform.
@@ -74,6 +76,64 @@ class _BookletWorkspaceState extends State<BookletWorkspace> {
       if (mounted && updated != null) setState(() => _project = updated);
     } catch (error) {
       if (mounted) setState(() => _error = 'Change not saved: $error');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _export(bool pdf) async {
+    final store = _store;
+    final project = _project;
+    if (_busy || store == null || project == null) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final location = await getSaveLocation(
+        suggestedName: 'zinefold-${project.id}.${pdf ? 'pdf' : 'zip'}',
+        acceptedTypeGroups: [
+          XTypeGroup(
+            label: pdf ? 'PDF print sheets' : 'Zine Fold backup',
+            extensions: [pdf ? 'pdf' : 'zip'],
+          ),
+        ],
+      );
+      if (location == null) return;
+      final exporter = ProjectExport(store);
+      final bytes = pdf
+          ? await exporter.printSheets(project)
+          : await exporter.backup(project);
+      await exporter.saveNew(File(location.path), bytes);
+    } catch (error) {
+      if (mounted) setState(() => _error = 'Export not saved: $error');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _restore() async {
+    if (_busy || _store == null) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final source = await openFile(
+        acceptedTypeGroups: [
+          const XTypeGroup(label: 'Zine Fold backup', extensions: ['zip']),
+        ],
+      );
+      if (source == null) return;
+      final project = await ProjectExport(_store!).restore(File(source.path));
+      if (mounted) {
+        setState(() {
+          _project = project;
+          _signature = project.signature;
+        });
+      }
+    } catch (error) {
+      if (mounted) setState(() => _error = 'Restore not applied: $error');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -414,6 +474,27 @@ class _BookletWorkspaceState extends State<BookletWorkspace> {
             (store, snapshot) =>
                 store.updatePrintSettings(snapshot, flipEdge: value),
           ),
+        ),
+        Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          children: [
+            _control(
+              'Export print PDF',
+              _busy ? null : () => _export(true),
+              key: const ValueKey('export-pdf'),
+            ),
+            _control(
+              'Save backup',
+              _busy ? null : () => _export(false),
+              key: const ValueKey('save-backup'),
+            ),
+            _control(
+              'Restore backup',
+              _busy ? null : _restore,
+              key: const ValueKey('restore-backup'),
+            ),
+          ],
         ),
         if (_error != null)
           Text(_error!, style: const TextStyle(color: Color(0xffb00020))),
