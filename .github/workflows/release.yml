@@ -1,0 +1,89 @@
+name: Release Windows
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing vMAJOR.MINOR.PATCH tag to publish'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - name: Validate tag and check out its commit
+        id: source
+        shell: pwsh
+        env:
+          REQUESTED_TAG: ${{ inputs.tag }}
+        run: |
+          $tag = if ($env:GITHUB_EVENT_NAME -eq 'push') { $env:GITHUB_REF_NAME } else { $env:REQUESTED_TAG }
+          if ($tag -cnotmatch '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$') { throw "Expected existing vMAJOR.MINOR.PATCH tag" }
+          "tag=$tag" >> $env:GITHUB_OUTPUT
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.source.outputs.tag }}
+          fetch-depth: 0
+      - name: Assert tagged source
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ steps.source.outputs.tag }}
+        run: |
+          $tagCommit = git rev-parse "refs/tags/$env:RELEASE_TAG^{}"
+          if ($LASTEXITCODE -ne 0) { throw "Tag does not exist" }
+          $checkoutCommit = git rev-parse HEAD
+          if ($tagCommit -ne $checkoutCommit) { throw "Checkout differs from tag" }
+          "Verified $env:RELEASE_TAG at $checkoutCommit"
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.47.7'
+          cache: true
+      - run: flutter pub get --enforce-lockfile
+      - run: flutter test
+      - run: flutter build windows --release
+      - name: Bundle complete Windows runner
+        id: bundle
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ steps.source.outputs.tag }}
+        run: |
+          $output = 'build/windows/x64/runner/Release'
+          if (-not (Test-Path "$output/zinefold.exe")) { throw 'Missing zinefold.exe' }
+          if (-not (Test-Path "$output/data" -PathType Container)) { throw 'Missing Flutter data directory' }
+          $zip = "zine-fold-$env:RELEASE_TAG-windows.zip"
+          Compress-Archive -Path "$output/*" -DestinationPath $zip
+          Add-Type -AssemblyName System.IO.Compression
+          $archive = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $zip))
+          try {
+            $names = @($archive.Entries | ForEach-Object FullName)
+            if ($names -notcontains 'zinefold.exe') { throw 'ZIP missing executable' }
+            $dataFiles = @($names | Where-Object { $_ -like 'data/*' })
+            if ($dataFiles.Count -eq 0) { throw 'ZIP missing Flutter data' }
+            "ZIP entries: $($names.Count)"
+          } finally { $archive.Dispose() }
+          "zip=$zip" >> $env:GITHUB_OUTPUT
+      - name: Publish release asset
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.source.outputs.tag }}
+          ZIP_FILE: ${{ steps.bundle.outputs.zip }}
+        run: |
+          gh release view $env:RELEASE_TAG --json tagName 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $env:RELEASE_TAG --verify-tag --title "Zine Fold $env:RELEASE_TAG" --notes 'Offline Windows portable build. Extract entire archive before running.'
+            if ($LASTEXITCODE -ne 0) { throw 'Failed to create release' }
+          }
+          gh release upload $env:RELEASE_TAG $env:ZIP_FILE --clobber
+          if ($LASTEXITCODE -ne 0) { throw 'Failed to upload asset' }
+          $asset = gh release view $env:RELEASE_TAG --json assets | ConvertFrom-Json
+          $matching = @($asset.assets | Where-Object { $_.name -eq $env:ZIP_FILE -and $_.size -gt 0 })
+          if ($matching.Count -ne 1) { throw 'Uploaded asset missing or empty' }
+          "Release asset: $($matching[0].url) ($($matching[0].size) bytes)"
